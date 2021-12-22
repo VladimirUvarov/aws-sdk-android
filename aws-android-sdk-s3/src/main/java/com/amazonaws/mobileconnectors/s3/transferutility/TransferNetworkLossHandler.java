@@ -20,6 +20,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.net.NetworkInfo;
 
 import com.amazonaws.services.s3.AmazonS3;
@@ -135,8 +137,21 @@ public class TransferNetworkLossHandler extends BroadcastReceiver {
      * @return true if network is connected, false otherwise.
      */
     boolean isNetworkConnected() {
-        final NetworkInfo info = connManager.getActiveNetworkInfo();
-        return info != null && info.isConnected();
+        for (Network network : connManager.getAllNetworks()) {
+            NetworkCapabilities capabilities = connManager.getNetworkCapabilities(network);
+            if (capabilities != null) {
+                if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                    return true;
+                } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                    return true;
+                } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
+                    return true;
+                } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**

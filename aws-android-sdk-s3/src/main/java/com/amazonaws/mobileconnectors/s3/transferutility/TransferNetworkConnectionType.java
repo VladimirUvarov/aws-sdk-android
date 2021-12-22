@@ -16,7 +16,8 @@
 package com.amazonaws.mobileconnectors.s3.transferutility;
 
 import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import com.amazonaws.logging.Log;
 import com.amazonaws.logging.LogFactory;
 import com.google.gson.annotations.SerializedName;
@@ -34,8 +35,22 @@ public enum TransferNetworkConnectionType {
     @SerializedName("ANY")
     ANY() {
         @Override
-        protected boolean verify(NetworkInfo networkInfo) {
-            return networkInfo != null && networkInfo.isConnected();
+        protected boolean verify(ConnectivityManager connectivityManager) {
+            for (Network network : connectivityManager.getAllNetworks()) {
+                NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(network);
+                if (capabilities != null) {
+                    if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                        return true;
+                    } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                        return true;
+                    } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
+                        return true;
+                    } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
     },
 
@@ -45,9 +60,16 @@ public enum TransferNetworkConnectionType {
     @SerializedName("WIFI")
     WIFI() {
         @Override
-        protected boolean verify(NetworkInfo networkInfo) {
-            return networkInfo != null && networkInfo.isConnected()
-                    && networkInfo.getType() == ConnectivityManager.TYPE_WIFI;
+        protected boolean verify(ConnectivityManager connectivityManager) {
+            for (Network network : connectivityManager.getAllNetworks()) {
+                NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(network);
+                if (capabilities != null) {
+                    if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
     },
 
@@ -57,9 +79,16 @@ public enum TransferNetworkConnectionType {
     @SerializedName("MOBILE")
     MOBILE() {
         @Override
-        protected boolean verify(NetworkInfo networkInfo) {
-            return networkInfo != null && networkInfo.isConnected()
-                    && networkInfo.getType() == ConnectivityManager.TYPE_MOBILE;
+        protected boolean verify(ConnectivityManager connectivityManager) {
+            for (Network network : connectivityManager.getAllNetworks()) {
+                NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(network);
+                if (capabilities != null) {
+                    if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
         }
     };
 
@@ -79,10 +108,10 @@ public enum TransferNetworkConnectionType {
      * @return true if network is connected, false otherwise.
      */
     boolean isConnected(final ConnectivityManager connectivityManager) {
-        return verify(connectivityManager.getActiveNetworkInfo());
+        return verify(connectivityManager);
     }
 
-    protected abstract boolean verify(final NetworkInfo networkInfo);
+    protected abstract boolean verify(final ConnectivityManager connectivityManager);
 
     /**
      * Returns the connection type from string
